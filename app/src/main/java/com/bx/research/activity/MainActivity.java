@@ -82,7 +82,6 @@ public class MainActivity extends BaseActivity {
             } else {
                 mWebView.loadUrl(ConstantsData.DEFAULT_HOST);
             }
-
         } else {
             try {
                 mUrl = URLDecoder.decode(mUrl, "UTF-8");
@@ -91,9 +90,9 @@ public class MainActivity extends BaseActivity {
             }
             mWebView.loadUrl(mUrl);
 
-            checkUpdate();
-
         }
+
+        checkUpdate();
     }
 
     @Override
@@ -241,22 +240,18 @@ public class MainActivity extends BaseActivity {
      * 检查更新
      */
     private void checkUpdate() {
-        new Handler().postDelayed(new Runnable() {
+        Network.postNetwork(ConstantsData.APP_UPDATE, null, RequestParamsPostion.PARAMS_POSITION_BODY, new CallBack<AppUpdateInfo>(AppUpdateInfo.class) {
             @Override
-            public void run() {
-                Network.postNetwork(ConstantsData.APP_UPDATE, null, RequestParamsPostion.PARAMS_POSITION_BODY, new CallBack<AppUpdateInfo>(AppUpdateInfo.class) {
-                    @Override
-                    public void doSuccess(final AppUpdateInfo entity) {
-                        LogUtils.d("=========AppUpdateInfo============" + entity.toString());
-                        int currentVersion = getVersionCode(mActivity);
-                        int serverVersion = Integer.parseInt(entity.getVersionCode());
-                        if (serverVersion > currentVersion) {
-                            showUpdateDialog(entity);
-                        }
-                    }
-                });
+            public void doSuccess(final AppUpdateInfo entity) {
+                LogUtils.d("=========AppUpdateInfo============" + entity.toString());
+                int currentVersion = getVersionCode(mActivity);
+                int serverVersion = Integer.parseInt(entity.getVersionCode());
+                if (serverVersion > currentVersion) {
+                    showUpdateDialog(entity);
+                }
             }
-        }, 5 * 1000);
+        });
+
     }
 
     /**
