@@ -8,7 +8,7 @@ android {
         applicationId "com.bx.research"
         minSdkVersion 15
         targetSdkVersion 24
-        versionCode 201607300
+        versionCode 201607301
         versionName "1.0"
     }
     buildTypes {

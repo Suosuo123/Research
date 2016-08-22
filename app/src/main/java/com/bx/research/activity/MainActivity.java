@@ -82,6 +82,9 @@ public class MainActivity extends BaseActivity {
             } else {
                 mWebView.loadUrl(ConstantsData.DEFAULT_HOST);
             }
+
+            checkUpdate();
+
         } else {
             try {
                 mUrl = URLDecoder.decode(mUrl, "UTF-8");
@@ -92,7 +95,6 @@ public class MainActivity extends BaseActivity {
 
         }
 
-        checkUpdate();
     }
 
     @Override
@@ -126,8 +128,8 @@ public class MainActivity extends BaseActivity {
         webView.setDrawingCacheEnabled(true);
 
         //自适应屏幕
-//        webView.getSettings().setUseWideViewPort(true);
-//        webView.getSettings().setLoadWithOverviewMode(true);
+        webView.getSettings().setUseWideViewPort(true);
+        webView.getSettings().setLoadWithOverviewMode(true);
 
         webView.addJavascriptInterface(new JsAction(), "ResearchJS");
 
