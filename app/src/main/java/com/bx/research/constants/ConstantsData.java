@@ -22,4 +22,7 @@ public class ConstantsData {
 
     public static final String APP_UPDATE = DEFAULT_HOST + "Version/Index";
 
+    public static final String APP_MAIN_URL = DEFAULT_HOST + "InversMain/Index";
+
+
 }

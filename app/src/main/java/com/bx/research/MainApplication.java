@@ -32,17 +32,30 @@ public class MainApplication extends Application {
     }
 
     // 运用list来保存们每一个activity是关键
-    private List<Activity> mList = new LinkedList<Activity>();
+    private List<Activity> mActivityList = new LinkedList<Activity>();
 
-    // add Activity
+    /**
+     * add Activity
+     *
+     * @param activity
+     */
     public void addActivity(Activity activity) {
-        mList.add(activity);
+        mActivityList.add(activity);
+    }
+
+    /**
+     * remove Activity
+     *
+     * @param activity
+     */
+    public void removeActivity(Activity activity) {
+        mActivityList.remove(activity);
     }
 
     // 关闭每一个list内的activity
     public void finishAllActivities() {
         try {
-            for (Activity activity : mList) {
+            for (Activity activity : mActivityList) {
                 if (activity != null)
                     activity.finish();
             }

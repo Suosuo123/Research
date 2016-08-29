@@ -8,6 +8,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Window;
 import android.view.WindowManager;
 
+import com.bx.research.MainApplication;
 import com.bx.research.R;
 import com.lidroid.xutils.ViewUtils;
 
@@ -22,6 +23,7 @@ public class BaseActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         ViewUtils.inject(this);
         mActivity = this;
+        MainApplication.getInstance().addActivity(mActivity);
         initWindow();
 
         onCreate();
@@ -38,6 +40,11 @@ public class BaseActivity extends AppCompatActivity {
     protected void initData() {
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        MainApplication.getInstance().removeActivity(mActivity);
+    }
 
     private void initWindow() {
 
