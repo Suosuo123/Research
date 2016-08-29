@@ -1,5 +1,7 @@
 package com.bx.research.activity;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -7,7 +9,9 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
-import android.os.Handler;
+import android.os.Looper;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.view.View;
@@ -29,14 +33,25 @@ import com.bx.research.net.Network;
 import com.bx.research.net.RequestParamsPostion;
 import com.bx.research.utils.SharedPreferenceUtils;
 import com.bx.research.utils.log.LogUtils;
+import com.bx.research.widget.WinToast;
 import com.google.gson.Gson;
 import com.lidroid.xutils.DbUtils;
 import com.lidroid.xutils.exception.DbException;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
+import com.lidroid.xutils.view.annotation.event.OnClick;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.HashMap;
+
+import cn.sharesdk.framework.Platform;
+import cn.sharesdk.framework.PlatformActionListener;
+import cn.sharesdk.framework.ShareSDK;
+import cn.sharesdk.onekeyshare.OnekeyShare;
+import cn.sharesdk.sina.weibo.SinaWeibo;
+import cn.sharesdk.tencent.qq.QQ;
+import cn.sharesdk.wechat.friends.Wechat;
 
 @ContentView(R.layout.activity_main)
 public class MainActivity extends BaseActivity {
@@ -51,6 +66,33 @@ public class MainActivity extends BaseActivity {
 
     private DbUtils mDbUtils;
 
+    @OnClick(R.id.btn_share)
+    public void share(View view) {
+        showShare();
+    }
+
+    @OnClick(R.id.btn_qq)
+    public void qq(View view) {
+        shareSDKLogin(1);
+    }
+
+    @OnClick(R.id.btn_wechat)
+    public void weChat(View view) {
+        shareSDKLogin(2);
+    }
+
+    @OnClick(R.id.btn_sina)
+    public void sina(View view) {
+        if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            //申请WRITE_EXTERNAL_STORAGE权限
+            ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.READ_CONTACTS}, READ_CONTACTS_REQUEST_CODE);
+            return;
+        }
+
+        shareSDKLogin(3);
+    }
+
+    public static final int READ_CONTACTS_REQUEST_CODE = 100;
 
     @Override
     protected void onCreate() {
@@ -59,7 +101,6 @@ public class MainActivity extends BaseActivity {
         mDbUtils = MainApplication.getInstance().getDbUtils();
 
         mUrl = getIntent().getStringExtra("url");
-
     }
 
     @Override
@@ -100,6 +141,15 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void initData() {
         super.initData();
+    }
+
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == READ_CONTACTS_REQUEST_CODE && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            shareSDKLogin(3);
+        } else {
+
+        }
     }
 
 
@@ -303,6 +353,101 @@ public class MainActivity extends BaseActivity {
             return 0;
         }
     }
+
+    /**
+     * 显示分享页面
+     */
+    private void showShare() {
+        ShareSDK.initSDK(this);
+
+        OnekeyShare oks = new OnekeyShare();
+        //关闭sso授权
+        oks.disableSSOWhenAuthorize();
+
+        // 分享时Notification的图标和文字  2.5.9以后的版本不调用此方法
+        //oks.setNotification(R.drawable.ic_launcher, getString(R.string.app_name));
+        // title标题，印象笔记、邮箱、信息、微信、人人网和QQ空间使用
+        oks.setTitle("标题");
+        // titleUrl是标题的网络链接，仅在人人网和QQ空间使用
+        oks.setTitleUrl("http://sharesdk.cn");
+        // text是分享文本，所有平台都需要这个字段
+        oks.setText("我是分享文本");
+        oks.setImageUrl("http://v1.qzone.cc/avatar/201309/25/13/12/524270bb2353a904.jpg%21200x200.jpg");
+        // imagePath是图片的本地路径，Linked-In以外的平台都支持此参数
+        // oks.setImagePath("/sdcard/test.jpg");//确保SDcard下面存在此张图片
+        // url仅在微信（包括好友和朋友圈）中使用
+        oks.setUrl("http://sharesdk.cn");
+        // comment是我对这条分享的评论，仅在人人网和QQ空间使用
+        oks.setComment("我是测试评论文本");
+        // site是分享此内容的网站名称，仅在QQ空间使用
+        oks.setSite(getString(R.string.app_name));
+        // siteUrl是分享此内容的网站地址，仅在QQ空间使用
+        oks.setSiteUrl("http://sharesdk.cn");
+
+// 启动分享GUI
+        oks.show(this);
+    }
+
+    /**
+     * 第三方登录
+     *
+     * @param type 1:qq  2:微信  3:微博
+     */
+    private void shareSDKLogin(int type) {
+
+        ShareSDK.initSDK(this);
+
+        if (type == 1) {
+            Platform qq = ShareSDK.getPlatform(QQ.NAME);
+            qq.setPlatformActionListener(mPlatformActionListener);
+//        qq.authorize();//单独授权
+            qq.showUser(null);//授权并获取用户信息
+            //authorize与showUser单独调用一个即可
+            //移除授权
+            //weibo.removeAccount(true);
+        } else if (type == 2) {
+            Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
+            weChat.setPlatformActionListener(mPlatformActionListener);
+            weChat.authorize();//单独授权
+            weChat.showUser(null);//授权并获取用户信息
+            //authorize与showUser单独调用一个即可
+            //移除授权
+            //weibo.removeAccount(true);
+        } else {
+            Platform weibo = ShareSDK.getPlatform(SinaWeibo.NAME);
+            weibo.setPlatformActionListener(mPlatformActionListener);
+            weibo.authorize();//单独授权
+            weibo.showUser(null);//授权并获取用户信息
+            //authorize与showUser单独调用一个即可
+            //移除授权
+            //weibo.removeAccount(true);
+        }
+    }
+
+    /**
+     * 第三方登录回调
+     */
+    private PlatformActionListener mPlatformActionListener = new PlatformActionListener() {
+        @Override
+        public void onComplete(Platform platform, int i, HashMap<String, Object> hashMap) {
+            LogUtils.d("=====onComplete=======" + hashMap.toString());
+
+            Looper.prepare();
+            new AlertDialog.Builder(mActivity).setMessage(hashMap.toString()).setTitle("获取到用户信息").show();
+            Looper.loop();
+
+        }
+
+        @Override
+        public void onError(Platform platform, int i, Throwable throwable) {
+            LogUtils.d("=====onError=======" + throwable.toString());
+        }
+
+        @Override
+        public void onCancel(Platform platform, int i) {
+            LogUtils.d("=====onCancel=======");
+        }
+    };
 
     @Override
     public void onBackPressed() {
