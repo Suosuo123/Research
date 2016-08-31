@@ -161,7 +161,13 @@ public class LoginActivity extends BaseActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 if (mIsLogin) {
-                    shareSDKLogin(mLoginType);
+                    if (mLoginType == -1) {//手机登录
+                        String phoneNumber = PreferencesUtils.getString(mActivity, "phoneNumber");
+                        String js = "javascript:n_login(" + mLoginType + ",'" + phoneNumber + "','" + ConstantsData.DEVICE_TYPE + "')";
+                        mWebView.loadUrl(js);
+                    } else {
+                        shareSDKLogin(mLoginType);
+                    }
                 }
             }
 
@@ -173,6 +179,8 @@ public class LoginActivity extends BaseActivity {
         });
     }
 
+    //登录后进入主界面需要检查更新
+    private int mStartMainType = -1;
 
     /**
      * js方法
@@ -188,11 +196,16 @@ public class LoginActivity extends BaseActivity {
             LogUtils.d("=========start=============" + url + "=======" + isFinish);
             Intent intent = new Intent(mActivity, MainActivity.class);
             intent.putExtra("url", url);
+            intent.putExtra("type", mStartMainType);
             startActivity(intent);
 
+            if (mStartMainType == 1) {
+                mStartMainType = -1;
+            }
             if (isFinish.equals("1")) {
                 finish();
             }
+
         }
 
         //关闭当前页面
@@ -204,17 +217,22 @@ public class LoginActivity extends BaseActivity {
 
         //登录成功
         @JavascriptInterface
-        public void loginSuccess() {
-            LogUtils.d("=========loginSuccess=============");
+        public void loginSuccess(String info) {
+            LogUtils.d("=========loginSuccess=============" + info);
             PreferencesUtils.putBoolean(mActivity, "isLogin", true);
             PreferencesUtils.putInt(mActivity, "loginType", mLoginType);
             PreferencesUtils.putString(mActivity, "loginInfo", mUserInfo);
+            PreferencesUtils.putString(mActivity, "phoneNumber", info);
 
-            Intent intent = new Intent(mActivity, MainActivity.class);
-            intent.putExtra("url", ConstantsData.APP_MAIN_URL);
-            intent.putExtra("type", 1);
-            startActivity(intent);
-            finish();
+            mStartMainType = 1;
+
+            if (mLoginType > -1) {//第三方登录,自己实现跳转逻辑,//默认登录方式,调用 JS start跳转
+                Intent intent = new Intent(mActivity, MainActivity.class);
+                intent.putExtra("url", ConstantsData.APP_MAIN_URL);
+                intent.putExtra("type", mStartMainType);
+                startActivity(intent);
+                finish();
+            }
         }
 
         //登录
@@ -288,7 +306,8 @@ public class LoginActivity extends BaseActivity {
             LoginActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    mWebView.loadUrl("javascript:ResearchJS.login(" + mLoginType + "," + mUserInfo + ")");
+                    String js = "javascript:n_login(" + mLoginType + ",'" + mUserInfo + "','" + ConstantsData.DEVICE_TYPE + "')";
+                    mWebView.loadUrl(js);
                 }
             });
         }

@@ -212,7 +212,7 @@ public class MainActivity extends BaseActivity {
         //分享
         @JavascriptInterface
         public void share(String info) {
-            LogUtils.d("=========share=============");
+            LogUtils.d("=========share=============" + info);
             showShare(info);
         }
 
@@ -227,14 +227,15 @@ public class MainActivity extends BaseActivity {
         //退出登录
         @JavascriptInterface
         public void logout() {
-            LogUtils.d("=========close=============");
+            LogUtils.d("=========logout=============");
             PreferencesUtils.putBoolean(mActivity, "isLogin", false);
             PreferencesUtils.putInt(mActivity, "loginType", -1);
             PreferencesUtils.putString(mActivity, "loginInfo", "");
+            PreferencesUtils.putString(mActivity, "phoneNumber", "");
 
             MainApplication.getInstance().finishAllActivities();
-            Intent intent = new Intent(mActivity, LoginActivity.class);
-            startActivity(intent);
+//            Intent intent = new Intent(mActivity, LoginActivity.class);
+//            startActivity(intent);
         }
     }
 

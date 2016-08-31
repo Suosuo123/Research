@@ -21,8 +21,8 @@
         android:id="@+id/iv_splash"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/main_orange"
         android:contentDescription="@null"
-        android:scaleType="centerCrop"
-        android:src="@drawable/ic_launcher" />
+        android:scaleType="centerCrop" />
 
 </RelativeLayout>

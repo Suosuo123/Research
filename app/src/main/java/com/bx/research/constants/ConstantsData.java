@@ -5,6 +5,8 @@ import com.bx.research.BuildConfig;
 
 public class ConstantsData {
 
+    public static final String DEVICE_TYPE = "android";
+
     public static final String SP_FILE_NAME = "research_sp";
 
     public static final String SDCARD_FILE_NAME = "research_file";
@@ -13,8 +15,8 @@ public class ConstantsData {
 
     static {
         if (BuildConfig.DEBUG) {
-//            DEFAULT_HOST = "http://192.168.1.14:8888/";// 测试环境
-            DEFAULT_HOST = "http://2016.diaoyan360.com/";// 正式环境
+            DEFAULT_HOST = "http://192.168.1.104/";// 测试环境
+//          DEFAULT_HOST = "http://2016.diaoyan360.com/";// 正式环境
         } else {
             DEFAULT_HOST = "http://2016.diaoyan360.com/";// 正式环境
         }
