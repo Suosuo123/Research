@@ -23,13 +23,16 @@ import com.bx.research.R;
 import com.bx.research.constants.ConstantsData;
 import com.bx.research.utils.PreferencesUtils;
 import com.bx.research.utils.log.LogUtils;
+import com.bx.research.widget.WinToast;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
+import com.lidroid.xutils.view.annotation.event.OnClick;
 
 import java.util.HashMap;
 
 import cn.sharesdk.framework.Platform;
 import cn.sharesdk.framework.PlatformActionListener;
+import cn.sharesdk.framework.PlatformDb;
 import cn.sharesdk.framework.ShareSDK;
 import cn.sharesdk.sina.weibo.SinaWeibo;
 import cn.sharesdk.tencent.qq.QQ;
@@ -50,6 +53,11 @@ public class LoginActivity extends BaseActivity {
     private boolean mIsLogin = false;//是否登录
     private int mLoginType = -1;//登录方式
     private String mUserInfo;//用户信息
+
+    @OnClick(R.id.btn_test)
+    public void testClick(View view) {
+        shareSDKLogin(2);
+    }
 
     @Override
     protected void onCreate() {
@@ -259,7 +267,7 @@ public class LoginActivity extends BaseActivity {
      * @param type 1:qq  2:微信  3:微博
      */
     private void shareSDKLogin(int type) {
-
+        mLoginType = type;
         ShareSDK.initSDK(this);
 
         if (type == 1) {
@@ -273,7 +281,7 @@ public class LoginActivity extends BaseActivity {
         } else if (type == 2) {
             Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
             weChat.setPlatformActionListener(mPlatformActionListener);
-            weChat.authorize();//单独授权
+//            weChat.authorize();//单独授权
             weChat.showUser(null);//授权并获取用户信息
             //authorize与showUser单独调用一个即可
             //移除授权
@@ -287,7 +295,7 @@ public class LoginActivity extends BaseActivity {
 
             Platform weibo = ShareSDK.getPlatform(SinaWeibo.NAME);
             weibo.setPlatformActionListener(mPlatformActionListener);
-            weibo.authorize();//单独授权
+//            weibo.authorize();//单独授权
             weibo.showUser(null);//授权并获取用户信息
             //authorize与showUser单独调用一个即可
             //移除授权
@@ -302,7 +310,18 @@ public class LoginActivity extends BaseActivity {
         @Override
         public void onComplete(Platform platform, int i, HashMap<String, Object> hashMap) {
             LogUtils.d("=====onComplete=======" + hashMap.toString());
-            mUserInfo = hashMap.toString();
+            //用户资源都保存到res //通过打印res数据看看有哪些数据是你想要的
+            //通过DB获取各种数据
+            if (mLoginType == 2) {
+                mUserInfo = hashMap.toString().split("unionid=")[1].split(",")[0];
+            } else {
+                if (i == Platform.ACTION_USER_INFOR) {
+                    PlatformDb platDB = platform.getDb();//获取数平台数据DB
+                    mUserInfo = platDB.getToken();
+                }
+            }
+            LogUtils.d("========mUserInfo=============" + mUserInfo);
+
             LoginActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {

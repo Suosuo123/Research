@@ -1,5 +1,8 @@
 package com.bx.research.entity;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+
 /**
  * Created by nate on 16/7/30.
  */

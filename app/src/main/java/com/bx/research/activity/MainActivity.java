@@ -33,12 +33,17 @@ import com.bx.research.widget.WinToast;
 import com.google.gson.Gson;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
+import com.lidroid.xutils.view.annotation.event.OnClick;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 
+import cn.sharesdk.framework.Platform;
 import cn.sharesdk.framework.ShareSDK;
 import cn.sharesdk.onekeyshare.OnekeyShare;
+import cn.sharesdk.sina.weibo.SinaWeibo;
+import cn.sharesdk.tencent.qq.QQ;
+import cn.sharesdk.wechat.friends.Wechat;
 
 @ContentView(R.layout.activity_main)
 public class MainActivity extends BaseActivity {
@@ -53,6 +58,13 @@ public class MainActivity extends BaseActivity {
     private int mType;
 
     private ClipboardManager mClipboardManager;
+
+    @OnClick(R.id.btn_test)
+    public void testClick(View view) {
+        String info = "{'title': '测试问卷','text': '内容文本','imageUrl': 'http://pic.qqtn.com/up/2016-7/2016072614451378952.jpg','url': 'http://2016.diaoyan360.com/InversTask/TaskDetail?taskId=12&uid=30BB99FA78FF9423'}";
+        showShare(info);
+    }
+
 
     @Override
     protected void onCreate() {
@@ -212,14 +224,13 @@ public class MainActivity extends BaseActivity {
         //分享
         @JavascriptInterface
         public void share(String info) {
-            LogUtils.d("=========share=============" + info);
             showShare(info);
         }
 
         //复制
         @JavascriptInterface
         public void copy(String content) {
-            LogUtils.d("=========close=============");
+            LogUtils.d("=========copy=============" + content);
             mClipboardManager.setText(content);
             WinToast.toast(mActivity, "已复制");
         }
@@ -228,6 +239,19 @@ public class MainActivity extends BaseActivity {
         @JavascriptInterface
         public void logout() {
             LogUtils.d("=========logout=============");
+            int loginType = PreferencesUtils.getInt(mActivity, "loginType", -1);
+            Platform platform;
+            if (loginType == 1) {
+                platform = ShareSDK.getPlatform(QQ.NAME);
+            } else if (loginType == 2) {
+                platform = ShareSDK.getPlatform(Wechat.NAME);
+            } else {
+                platform = ShareSDK.getPlatform(SinaWeibo.NAME);
+            }
+            if (null != platform) {
+                platform.removeAccount(true);
+            }
+
             PreferencesUtils.putBoolean(mActivity, "isLogin", false);
             PreferencesUtils.putInt(mActivity, "loginType", -1);
             PreferencesUtils.putString(mActivity, "loginInfo", "");
@@ -236,6 +260,8 @@ public class MainActivity extends BaseActivity {
             MainApplication.getInstance().finishAllActivities();
 //            Intent intent = new Intent(mActivity, LoginActivity.class);
 //            startActivity(intent);
+
+
         }
     }
 
@@ -289,12 +315,12 @@ public class MainActivity extends BaseActivity {
 
     /**
      * 获取版本号
+     * 获取版本号(内部识别号)
      *
      * @param context
      * @return
      */
-    public static int getVersionCode(Context context)//获取版本号(内部识别号)
-    {
+    public static int getVersionCode(Context context) {
         try {
             PackageInfo pi = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
             return pi.versionCode;
@@ -309,13 +335,14 @@ public class MainActivity extends BaseActivity {
      * 显示分享页面
      */
     private void showShare(String info) {
-
+        LogUtils.d("===========info===========" + info);
         if (TextUtils.isEmpty(info)) {
             return;
         }
 
         Gson gson = new Gson();
         ShareInfo shareInfo = gson.fromJson(info, ShareInfo.class);
+        LogUtils.d("======getUrl===========" + shareInfo.getUrl().replaceAll("&amp;", "&"));
 
         ShareSDK.initSDK(this);
 
@@ -331,11 +358,11 @@ public class MainActivity extends BaseActivity {
         oks.setTitleUrl(shareInfo.getUrl());
         // text是分享文本，所有平台都需要这个字段
         oks.setText(shareInfo.getText());
-        oks.setImageUrl(shareInfo.getImageUrl());
+        oks.setImageUrl(shareInfo.getImageUrl().replaceAll("&amp;", "&"));
         // imagePath是图片的本地路径，Linked-In以外的平台都支持此参数
         // oks.setImagePath("/sdcard/test.jpg");//确保SDcard下面存在此张图片
         // url仅在微信（包括好友和朋友圈）中使用
-        oks.setUrl(shareInfo.getUrl());
+        oks.setUrl(shareInfo.getUrl().replaceAll("&amp;", "&"));
         // comment是我对这条分享的评论，仅在人人网和QQ空间使用
         oks.setComment("");
         // site是分享此内容的网站名称，仅在QQ空间使用
