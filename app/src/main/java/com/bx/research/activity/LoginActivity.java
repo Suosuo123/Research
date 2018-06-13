@@ -201,7 +201,8 @@ public class LoginActivity extends BaseActivity {
         //打开新页面
         @JavascriptInterface
         public void start(String url, String isFinish) {
-            LogUtils.d("=========start=============" + url + "=======" + isFinish);
+            LogUtils.d("=========start=============" + url);
+            LogUtils.d("=========isFinish=============" + isFinish);
             Intent intent = new Intent(mActivity, MainActivity.class);
             intent.putExtra("url", url);
             intent.putExtra("type", mStartMainType);

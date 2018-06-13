@@ -1,31 +1,46 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 24
-    buildToolsVersion "24.0.0"
-
+    compileSdkVersion 27
     defaultConfig {
         applicationId "com.bx.research"
         minSdkVersion 15
-        targetSdkVersion 24
-        versionCode 201607301
+        targetSdkVersion 27
+        versionCode 1
         versionName "1.0"
     }
-    buildTypes {
+
+    signingConfigs {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            storeFile file("research.jks")
+            storePassword "123456"
+            keyAlias "research.jks"
+            keyPassword "123456"
+            v2SigningEnabled false
         }
     }
 
+
+    buildTypes {
+        release {
+            //是否混淆
+            minifyEnabled false
+            //Zipalign优化
+            zipAlignEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
     useLibrary 'org.apache.http.legacy'
 }
 
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:24.2.0'
-    compile 'com.jiechic.library:xUtils:2.6.14'
-    compile 'com.google.code.gson:gson:2.4'
-    compile 'com.google.android.gms:play-services-appindexing:9.4.0'
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'com.android.support:appcompat-v7:27.1.1'
+    implementation 'com.google.code.gson:gson:2.8.0'
+    implementation 'com.jiechic.library:xUtils:2.6.14'
 }

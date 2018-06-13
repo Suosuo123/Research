@@ -59,11 +59,11 @@ public class MainActivity extends BaseActivity {
 
     private ClipboardManager mClipboardManager;
 
-    @OnClick(R.id.btn_test)
-    public void testClick(View view) {
-        String info = "{'title': '测试问卷','text': '内容文本','imageUrl': 'http://pic.qqtn.com/up/2016-7/2016072614451378952.jpg','url': 'http://2016.diaoyan360.com/InversTask/TaskDetail?taskId=12&uid=30BB99FA78FF9423'}";
-        showShare(info);
-    }
+//    @OnClick(R.id.btn_test)
+//    public void testClick(View view) {
+//        String info = "{'title': '测试问卷','text': '内容文本','imageUrl': 'http://pic.qqtn.com/up/2016-7/2016072614451378952.jpg','url': 'http://2016.diaoyan360.com/InversTask/TaskDetail?taskId=12&uid=30BB99FA78FF9423'}";
+//        showShare(info);
+//    }
 
 
     @Override
