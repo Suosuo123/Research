@@ -6,7 +6,7 @@ android {
         applicationId "com.bx.questionnaire"
         minSdkVersion 15
         targetSdkVersion 27
-        versionCode 201806140
+        versionCode 201807130
         versionName "1.0"
     }
 
