@@ -9,6 +9,8 @@ import android.graphics.Bitmap;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
@@ -21,18 +23,25 @@ import android.widget.ProgressBar;
 
 import com.bx.research.R;
 import com.bx.research.constants.ConstantsData;
+import com.bx.research.entity.AppUpdateInfo;
+import com.bx.research.net.CallBack;
+import com.bx.research.net.Network;
+import com.bx.research.net.NetworkUtils;
+import com.bx.research.net.RequestParamsPostion;
 import com.bx.research.utils.PreferencesUtils;
 import com.bx.research.utils.log.LogUtils;
-import com.bx.research.widget.WinToast;
+import com.lidroid.xutils.exception.HttpException;
+import com.lidroid.xutils.http.ResponseInfo;
+import com.lidroid.xutils.http.callback.RequestCallBack;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
 import com.lidroid.xutils.view.annotation.event.OnClick;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import cn.sharesdk.framework.Platform;
 import cn.sharesdk.framework.PlatformActionListener;
-import cn.sharesdk.framework.PlatformDb;
 import cn.sharesdk.framework.ShareSDK;
 import cn.sharesdk.sina.weibo.SinaWeibo;
 import cn.sharesdk.tencent.qq.QQ;
@@ -52,16 +61,12 @@ public class LoginActivity extends BaseActivity {
 
     private boolean mIsLogin = false;//是否登录
     private int mLoginType = -1;//登录方式
-    private String mUserInfo;//用户信息
-
-    @OnClick(R.id.btn_test)
-    public void testClick(View view) {
-        shareSDKLogin(2);
-    }
 
     @Override
     protected void onCreate() {
         super.onCreate();
+
+        ShareSDK.initSDK(mActivity);
 
         mIsLogin = PreferencesUtils.getBoolean(mActivity, "isLogin", false);
         mLoginType = PreferencesUtils.getInt(mActivity, "loginType", -1);
@@ -79,7 +84,7 @@ public class LoginActivity extends BaseActivity {
 
         setWebView(mWebView);
 
-        mWebView.loadUrl(ConstantsData.DEFAULT_HOST);
+        mWebView.loadUrl(ConstantsData.APP_MAIN_URL);
     }
 
     @Override
@@ -127,6 +132,7 @@ public class LoginActivity extends BaseActivity {
 
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
+                LogUtils.d("=======onJsAlert");
                 AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
                 builder.setMessage(message);
                 builder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
@@ -170,8 +176,7 @@ public class LoginActivity extends BaseActivity {
                 super.onPageFinished(view, url);
                 if (mIsLogin) {
                     if (mLoginType == -1) {//手机登录
-                        String phoneNumber = PreferencesUtils.getString(mActivity, "phoneNumber");
-                        String js = "javascript:n_login(" + mLoginType + ",'" + phoneNumber + "','" + ConstantsData.DEVICE_TYPE + "')";
+                        String js = "javascript:window.app.n_login(" + mLoginType + "," + ConstantsData.DEVICE_TYPE + "," + PreferencesUtils.getString(mActivity, "userId") + "," + PreferencesUtils.getString(mActivity, "userInfo") + ")";
                         mWebView.loadUrl(js);
                     } else {
                         shareSDKLogin(mLoginType);
@@ -226,14 +231,16 @@ public class LoginActivity extends BaseActivity {
 
         //登录成功
         @JavascriptInterface
-        public void loginSuccess(String info) {
-            LogUtils.d("=========loginSuccess=============" + info);
-            PreferencesUtils.putBoolean(mActivity, "isLogin", true);
-            PreferencesUtils.putInt(mActivity, "loginType", mLoginType);
-            PreferencesUtils.putString(mActivity, "loginInfo", mUserInfo);
-            PreferencesUtils.putString(mActivity, "phoneNumber", info);
+        public void loginSuccess(String userId) {
+            LogUtils.d("=========loginSuccess=============" + userId);
 
             mStartMainType = 1;
+
+            PreferencesUtils.putBoolean(mActivity, "isLogin", true);
+            PreferencesUtils.putInt(mActivity, "loginType", mLoginType);
+
+            PreferencesUtils.putString(mActivity, "userId", userId);
+
 
             if (mLoginType > -1) {//第三方登录,自己实现跳转逻辑,//默认登录方式,调用 JS start跳转
                 Intent intent = new Intent(mActivity, MainActivity.class);
@@ -248,7 +255,16 @@ public class LoginActivity extends BaseActivity {
         @JavascriptInterface
         public void login(String type) {
             LogUtils.d("=========login=============" + type);
+
             mLoginType = Integer.parseInt(type);
+            if (mLoginType == 1) {
+                Platform qq = ShareSDK.getPlatform(QQ.NAME);
+                qq.removeAccount(true);
+            } else if (mLoginType == 2) {
+                Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
+                weChat.removeAccount(true);
+            }
+
             shareSDKLogin(mLoginType);
         }
     }
@@ -269,39 +285,38 @@ public class LoginActivity extends BaseActivity {
      */
     private void shareSDKLogin(int type) {
         mLoginType = type;
-        ShareSDK.initSDK(this);
-
         if (type == 1) {
             Platform qq = ShareSDK.getPlatform(QQ.NAME);
-            qq.setPlatformActionListener(mPlatformActionListener);
-//        qq.authorize();//单独授权
-            qq.showUser(null);//授权并获取用户信息
-            //authorize与showUser单独调用一个即可
-            //移除授权
-            //weibo.removeAccount(true);
-        } else if (type == 2) {
-            Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
-            weChat.setPlatformActionListener(mPlatformActionListener);
-//            weChat.authorize();//单独授权
-            weChat.showUser(null);//授权并获取用户信息
-            //authorize与showUser单独调用一个即可
-            //移除授权
-            //weibo.removeAccount(true);
-        } else {
-            if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                //申请WRITE_EXTERNAL_STORAGE权限
-                ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.READ_CONTACTS}, READ_CONTACTS_REQUEST_CODE);
+            if (qq.isAuthValid()) {
+                thirdLoginSuccess(qq);
                 return;
             }
-
-            Platform weibo = ShareSDK.getPlatform(SinaWeibo.NAME);
-            weibo.setPlatformActionListener(mPlatformActionListener);
-//            weibo.authorize();//单独授权
-            weibo.showUser(null);//授权并获取用户信息
-            //authorize与showUser单独调用一个即可
-            //移除授权
-            //weibo.removeAccount(true);
+            qq.setPlatformActionListener(mPlatformActionListener);
+            qq.showUser(null);//授权并获取用户信息
+        } else if (type == 2) {
+            Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
+            if (weChat.isAuthValid()) {
+                thirdLoginSuccess(weChat);
+                return;
+            }
+            weChat.setPlatformActionListener(mPlatformActionListener);
+            weChat.showUser(null);//授权并获取用户信息
         }
+//        else {
+//            if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+//                //申请WRITE_EXTERNAL_STORAGE权限
+//                ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.READ_CONTACTS}, READ_CONTACTS_REQUEST_CODE);
+//                return;
+//            }
+//
+//            Platform weibo = ShareSDK.getPlatform(SinaWeibo.NAME);
+//            weibo.setPlatformActionListener(mPlatformActionListener);
+////            weibo.authorize();//单独授权
+//            weibo.showUser(null);//授权并获取用户信息
+//            //authorize与showUser单独调用一个即可
+//            //移除授权
+//            //weibo.removeAccount(true);
+//        }
     }
 
     /**
@@ -310,26 +325,18 @@ public class LoginActivity extends BaseActivity {
     private PlatformActionListener mPlatformActionListener = new PlatformActionListener() {
         @Override
         public void onComplete(Platform platform, int i, HashMap<String, Object> hashMap) {
-            LogUtils.d("=====onComplete=======" + hashMap.toString());
             //用户资源都保存到res //通过打印res数据看看有哪些数据是你想要的
             //通过DB获取各种数据
-            if (mLoginType == 2) {
-                mUserInfo = hashMap.toString().split("unionid=")[1].split(",")[0];
-            } else {
-                if (i == Platform.ACTION_USER_INFOR) {
-                    PlatformDb platDB = platform.getDb();//获取数平台数据DB
-                    mUserInfo = platDB.getToken();
-                }
-            }
-            LogUtils.d("========mUserInfo=============" + mUserInfo);
+//            if (mLoginType == 2) {
+//                mUserInfo = hashMap.toString().split("unionid=")[1].split(",")[0];
+//            } else {
+//                if (i == Platform.ACTION_USER_INFOR) {
+//                    PlatformDb platDB = platform.getDb();//获取数平台数据DB
+//                    mUserInfo = platDB.getToken();
+//                }
+//            }
 
-            LoginActivity.this.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    String js = "javascript:n_login(" + mLoginType + ",'" + mUserInfo + "','" + ConstantsData.DEVICE_TYPE + "')";
-                    mWebView.loadUrl(js);
-                }
-            });
+            thirdLoginSuccess(platform);
         }
 
         @Override
@@ -342,6 +349,59 @@ public class LoginActivity extends BaseActivity {
             LogUtils.d("=====onCancel=======");
         }
     };
+
+    /**
+     * 第三方登录成功
+     *
+     * @param platform
+     */
+    private void thirdLoginSuccess(Platform platform) {
+        final String userInfo = platform.getDb().exportData().toString();
+        LogUtils.d("=====onComplete=======" + userInfo);
+
+        //qq登录，先获取unionID
+        if (platform.getName().equals(QQ.NAME)) {
+            Map<String, String> params = new HashMap<>();
+            params.put("access_token", platform.getDb().getToken());
+            params.put("unionid", "1");
+            Network.postNetwork(ConstantsData.QQ_UNION, params, RequestParamsPostion.PARAMS_POSITION_BODY, new RequestCallBack<String>() {
+                @Override
+                public void onSuccess(ResponseInfo<String> responseInfo) {
+                    if (!TextUtils.isEmpty(responseInfo.result)) {
+                        String result = (userInfo + responseInfo.result).replace(" ", "").trim();
+                        final String totalResult = result.replace("}callback({", ",").replace(");", "");
+
+                        PreferencesUtils.putString(mActivity, "userInfo", totalResult);
+
+                        LoginActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                String js = "javascript:window.app.n_login(" + mLoginType + "," + ConstantsData.DEVICE_TYPE + ",'" + PreferencesUtils.getString(mActivity, "userId", "") + "'," + totalResult + ")";
+                                LogUtils.d("=========js=====" + js);
+                                mWebView.loadUrl(js);
+                            }
+                        });
+                    }
+                }
+
+                @Override
+                public void onFailure(HttpException error, String msg) {
+
+                }
+            });
+        } else {
+            PreferencesUtils.putString(mActivity, "userInfo", platform.getDb().exportData().toString());
+
+            LoginActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    String js = "javascript:window.app.n_login(" + mLoginType + "," + ConstantsData.DEVICE_TYPE + "," + PreferencesUtils.getString(mActivity, "userId") + "," + userInfo + ")";
+                    mWebView.loadUrl(js);
+                }
+            });
+        }
+
+    }
 
     @Override
     public void onBackPressed() {

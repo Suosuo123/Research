@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 27
     defaultConfig {
-        applicationId "com.bx.questionnaire"
+        applicationId "com.bx.research"
         minSdkVersion 15
         targetSdkVersion 27
         versionCode 201807130

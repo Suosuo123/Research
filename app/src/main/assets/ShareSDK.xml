@@ -83,7 +83,7 @@
         Enable="false" Id="6" SortId="6" />
 
     <!-- ShareByAppClient标识是否使用微博客户端分享，默认是false -->
-    <QQ AppId="1105569839" AppKey="Po3RT2vNTzrSgK3Q" Enable="true" Id="400" ShareByAppClient="true"
+    <QQ AppId="101487701" AppKey="99e0a8bad706e91efda601d0d1f21853" Enable="true" Id="400" ShareByAppClient="true"
         SortId="400" />
 
     <QZone AppId="1105569839" AppKey="Po3RT2vNTzrSgK3Q" Enable="true" Id="500" SortId="500" />
