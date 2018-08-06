@@ -7,7 +7,7 @@ import com.lidroid.xutils.db.annotation.Table;
 /**
  * Created by nate on 16/7/30.
  */
-public class AppUpdateInfo extends BaseEntity {
+public class AppUpdateInfo extends BaseResult {
     //    {versionCode:20160730,versionName:"1.0",message:"修复了部分bug",url:"http://www.sjasjaksjkasd.apk"}
 
     private String versionCode;

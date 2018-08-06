@@ -1,10 +1,9 @@
 package com.bx.research.net;
 
-import com.bx.research.entity.BaseEntity;
+import com.bx.research.entity.BaseResult;
 import com.bx.research.utils.log.LogUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
 
 import java.lang.reflect.Type;
 import java.text.DateFormat;
@@ -15,10 +14,10 @@ public class JsonUtils {
 	/**
 	 * 解析jsonObject类型的json
 	 */
-	public static BaseEntity parseMainBeanFromJson(String joStr, Class<?> class1) {
+	public static BaseResult parseMainBeanFromJson(String joStr, Class<?> class1) {
 		Gson gson = new Gson();
 		try {
-			return (BaseEntity) gson.fromJson(joStr, class1);
+			return (BaseResult) gson.fromJson(joStr, class1);
 		} catch (Exception e) {
 			e.printStackTrace();
 			LogUtils.d("将json数据直接解析为对象失败:" + class1 + joStr);

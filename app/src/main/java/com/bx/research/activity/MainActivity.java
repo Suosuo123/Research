@@ -1,5 +1,7 @@
 package com.bx.research.activity;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -8,11 +10,15 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -33,7 +39,6 @@ import com.bx.research.widget.WinToast;
 import com.google.gson.Gson;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
-import com.lidroid.xutils.view.annotation.event.OnClick;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -101,6 +106,53 @@ public class MainActivity extends BaseActivity {
         super.initData();
     }
 
+    public void onRequestPermissionsResult(int requestCode,String[] permissons,int[] grantResult){
+        switch(requestCode){
+            case 10:if(grantResult.length>0 && grantResult[0]==PackageManager.PERMISSION_GRANTED){
+                onenFileChooseImpleForAndroid();
+            }else{
+                WinToast.toast(mActivity,"permission denied");
+            }break;
+            default:;
+        }
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        super.onActivityResult(requestCode, resultCode, intent);
+        Uri result = (intent == null || resultCode != Activity.RESULT_OK) ? null : intent.getData();
+        switch (requestCode) {
+            case FILE_CHOOSER_RESULT_CODE:  //android 5.0以下 选择图片回调
+
+                if (null == mUploadMessage)
+                    return;
+                mUploadMessage.onReceiveValue(result);
+                mUploadMessage = null;
+
+                break;
+
+            case FILE_CHOOSER_RESULT_CODE_FOR_ANDROID_5:  //android 5.0(含) 以上 选择图片回调
+
+                if (null == mUploadMessageForAndroid5)
+                    return;
+                if (result != null) {
+                    mUploadMessageForAndroid5.onReceiveValue(new Uri[]{result});
+                } else {
+                    mUploadMessageForAndroid5.onReceiveValue(new Uri[]{});
+                }
+                mUploadMessageForAndroid5 = null;
+
+                break;
+        }
+    }
+
+    public ValueCallback<Uri[]> mUploadMessageForAndroid5;
+    public ValueCallback<Uri> mUploadMessage;
+    public final static int FILE_CHOOSER_RESULT_CODE_FOR_ANDROID_5 = 2;
+    private final static int FILE_CHOOSER_RESULT_CODE = 1;// 表单的结果回调
+    private Uri imageUri;
+
     /**
      * 配置webView基本参数
      *
@@ -164,6 +216,27 @@ public class MainActivity extends BaseActivity {
                 }
                 super.onProgressChanged(view, newProgress);
             }
+
+            // For Android < 5.0
+            public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
+                mUploadMessage = uploadMsg;
+
+                openFileChooserImpl();
+            }
+
+            // For Android => 5.0
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> uploadMsg,
+                                             WebChromeClient.FileChooserParams fileChooserParams) {
+                mUploadMessageForAndroid5 = uploadMsg;
+
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 10);
+                } else {
+                    onenFileChooseImpleForAndroid();
+                }
+
+                return true;
+            }
         });
         webView.setWebViewClient(new WebViewClient() {
 
@@ -190,8 +263,38 @@ public class MainActivity extends BaseActivity {
                 LogUtils.d("=========onReceivedError=============");
             }
         });
+
+
     }
 
+    /**
+     * android 5.0 以下开启图片选择（原生）
+     * <p>
+     * 可以自己改图片选择框架。
+     */
+    private void openFileChooserImpl() {
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("image/*");
+        startActivityForResult(Intent.createChooser(i, "File Chooser"), FILE_CHOOSER_RESULT_CODE);
+    }
+
+    /**
+     * android 5.0(含) 以上开启图片选择（原生）
+     * <p>
+     * 可以自己改图片选择框架。
+     */
+    private void onenFileChooseImpleForAndroid() {
+        Intent contentSelectionIntent = new Intent(Intent.ACTION_GET_CONTENT);
+        contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE);
+        contentSelectionIntent.setType("image/*");
+
+        Intent chooserIntent = new Intent(Intent.ACTION_CHOOSER);
+        chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent);
+        chooserIntent.putExtra(Intent.EXTRA_TITLE, "Image Chooser");
+
+        startActivityForResult(chooserIntent, FILE_CHOOSER_RESULT_CODE_FOR_ANDROID_5);
+    }
 
     /**
      * js方法
@@ -203,7 +306,7 @@ public class MainActivity extends BaseActivity {
         //打开新页面
         @JavascriptInterface
         public void start(String url, String isFinish) {
-            LogUtils.d("=========start=============" + url + "=======" + isFinish);
+            LogUtils.d("=========start=============" + url);
             Intent intent = new Intent(mActivity, MainActivity.class);
             intent.putExtra("url", url);
             startActivity(intent);
@@ -251,17 +354,11 @@ public class MainActivity extends BaseActivity {
             if (null != platform) {
                 platform.removeAccount(true);
             }
-
-            PreferencesUtils.putBoolean(mActivity, "isLogin", false);
-            PreferencesUtils.putInt(mActivity, "loginType", -1);
-            PreferencesUtils.putString(mActivity, "loginInfo", "");
-            PreferencesUtils.putString(mActivity, "phoneNumber", "");
-
+            PreferencesUtils.clear(mActivity);
             MainApplication.getInstance().finishAllActivities();
-//            Intent intent = new Intent(mActivity, LoginActivity.class);
-//            startActivity(intent);
-
-
+            Intent intent = new Intent(mActivity, LoginActivity.class);
+            intent.putExtra("closeBanner", true);
+            startActivity(intent);
         }
     }
 

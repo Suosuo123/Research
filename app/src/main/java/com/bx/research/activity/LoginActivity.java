@@ -1,17 +1,14 @@
 package com.bx.research.activity;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
@@ -21,21 +18,23 @@ import android.webkit.WebViewClient;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import com.bumptech.glide.Glide;
 import com.bx.research.R;
 import com.bx.research.constants.ConstantsData;
-import com.bx.research.entity.AppUpdateInfo;
+import com.bx.research.entity.BaseResult;
+import com.bx.research.entity.SplashResult;
 import com.bx.research.net.CallBack;
 import com.bx.research.net.Network;
 import com.bx.research.net.NetworkUtils;
 import com.bx.research.net.RequestParamsPostion;
 import com.bx.research.utils.PreferencesUtils;
 import com.bx.research.utils.log.LogUtils;
+import com.google.gson.Gson;
 import com.lidroid.xutils.exception.HttpException;
 import com.lidroid.xutils.http.ResponseInfo;
 import com.lidroid.xutils.http.callback.RequestCallBack;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
-import com.lidroid.xutils.view.annotation.event.OnClick;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +42,6 @@ import java.util.Map;
 import cn.sharesdk.framework.Platform;
 import cn.sharesdk.framework.PlatformActionListener;
 import cn.sharesdk.framework.ShareSDK;
-import cn.sharesdk.sina.weibo.SinaWeibo;
 import cn.sharesdk.tencent.qq.QQ;
 import cn.sharesdk.wechat.friends.Wechat;
 
@@ -62,34 +60,87 @@ public class LoginActivity extends BaseActivity {
     private boolean mIsLogin = false;//是否登录
     private int mLoginType = -1;//登录方式
 
+//    @OnClick(R.id.btn_test)
+//    public void testClick(View view) {
+//
+//    }
+
     @Override
     protected void onCreate() {
         super.onCreate();
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN); //隐藏状态栏
 
         ShareSDK.initSDK(mActivity);
 
         mIsLogin = PreferencesUtils.getBoolean(mActivity, "isLogin", false);
         mLoginType = PreferencesUtils.getInt(mActivity, "loginType", -1);
 
-        if (mIsLogin) {//已经登陆过，显示欢迎图片
-            iv_splash.setVisibility(View.VISIBLE);
-        } else {
+
+        if (getIntent().getBooleanExtra("closeBanner", false)) {
             iv_splash.setVisibility(View.GONE);
+            mWebView.loadUrl(ConstantsData.APP_MAIN_URL);
+        } else {
+            initSplash();
         }
+
     }
+
 
     @Override
     protected void initView() {
         super.initView();
 
         setWebView(mWebView);
-
-        mWebView.loadUrl(ConstantsData.APP_MAIN_URL);
     }
 
     @Override
     protected void initData() {
         super.initData();
+    }
+
+    /**
+     * 初始化banner
+     */
+    private void initSplash() {
+        Network.postNetwork(ConstantsData.APP_SPLASH, null, RequestParamsPostion.PARAMS_POSITION_BODY, new RequestCallBack<String>() {
+            @Override
+            public void onSuccess(ResponseInfo<String> responseInfo) {
+                if (!TextUtils.isEmpty(responseInfo.result)) {
+                    Gson gson = new Gson();
+                    final SplashResult result = gson.fromJson(responseInfo.result, SplashResult.class);
+
+                    if (!TextUtils.isEmpty(result.getData().getImgUrl())) {
+                        Glide.with(mActivity).load(result.getData().getImgUrl()).into(iv_splash);
+                        iv_splash.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(mActivity, MainActivity.class);
+                                intent.putExtra("url", result.getData().getHref());
+                                startActivity(intent);
+                            }
+                        });
+                    }
+
+                    iv_splash.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (!mIsLogin) {
+                                iv_splash.setVisibility(View.GONE);
+                            }
+                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN); //显示状态栏
+                            mWebView.loadUrl(ConstantsData.APP_MAIN_URL);
+                        }
+                    }, result.getData().getTime());
+                }
+            }
+
+            @Override
+            public void onFailure(HttpException error, String msg) {
+
+            }
+        });
+
+
     }
 
     /**
@@ -174,10 +225,10 @@ public class LoginActivity extends BaseActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+
                 if (mIsLogin) {
                     if (mLoginType == -1) {//手机登录
-                        String js = "javascript:window.app.n_login(" + mLoginType + "," + ConstantsData.DEVICE_TYPE + "," + PreferencesUtils.getString(mActivity, "userId") + "," + PreferencesUtils.getString(mActivity, "userInfo") + ")";
-                        mWebView.loadUrl(js);
+                        thirdLoginSuccess("{}");
                     } else {
                         shareSDKLogin(mLoginType);
                     }
@@ -238,17 +289,18 @@ public class LoginActivity extends BaseActivity {
 
             PreferencesUtils.putBoolean(mActivity, "isLogin", true);
             PreferencesUtils.putInt(mActivity, "loginType", mLoginType);
-
             PreferencesUtils.putString(mActivity, "userId", userId);
 
-
-            if (mLoginType > -1) {//第三方登录,自己实现跳转逻辑,//默认登录方式,调用 JS start跳转
-                Intent intent = new Intent(mActivity, MainActivity.class);
-                intent.putExtra("url", ConstantsData.APP_MAIN_URL);
-                intent.putExtra("type", mStartMainType);
-                startActivity(intent);
-                finish();
-            }
+            LoginActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Intent intent = new Intent(mActivity, MainActivity.class);
+                    intent.putExtra("url", ConstantsData.APP_MAIN_URL);
+                    intent.putExtra("type", mStartMainType);
+                    startActivity(intent);
+                    finish();
+                }
+            });
         }
 
         //登录
@@ -257,16 +309,17 @@ public class LoginActivity extends BaseActivity {
             LogUtils.d("=========login=============" + type);
 
             mLoginType = Integer.parseInt(type);
-            if (mLoginType == 1) {
-                Platform qq = ShareSDK.getPlatform(QQ.NAME);
-                qq.removeAccount(true);
-            } else if (mLoginType == 2) {
-                Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
-                weChat.removeAccount(true);
-            }
+//            if (mLoginType == 1) {
+//                Platform qq = ShareSDK.getPlatform(QQ.NAME);
+//                qq.removeAccount(true);
+//            } else if (mLoginType == 2) {
+//                Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
+//                weChat.removeAccount(true);
+//            }
 
             shareSDKLogin(mLoginType);
         }
+
     }
 
     public static final int READ_CONTACTS_REQUEST_CODE = 100;
@@ -288,7 +341,7 @@ public class LoginActivity extends BaseActivity {
         if (type == 1) {
             Platform qq = ShareSDK.getPlatform(QQ.NAME);
             if (qq.isAuthValid()) {
-                thirdLoginSuccess(qq);
+                thirdLoginSuccess(qq.getDb().exportData().toString());
                 return;
             }
             qq.setPlatformActionListener(mPlatformActionListener);
@@ -296,7 +349,7 @@ public class LoginActivity extends BaseActivity {
         } else if (type == 2) {
             Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
             if (weChat.isAuthValid()) {
-                thirdLoginSuccess(weChat);
+                thirdLoginSuccess(weChat.getDb().exportData().toString());
                 return;
             }
             weChat.setPlatformActionListener(mPlatformActionListener);
@@ -325,18 +378,36 @@ public class LoginActivity extends BaseActivity {
     private PlatformActionListener mPlatformActionListener = new PlatformActionListener() {
         @Override
         public void onComplete(Platform platform, int i, HashMap<String, Object> hashMap) {
-            //用户资源都保存到res //通过打印res数据看看有哪些数据是你想要的
-            //通过DB获取各种数据
-//            if (mLoginType == 2) {
-//                mUserInfo = hashMap.toString().split("unionid=")[1].split(",")[0];
-//            } else {
-//                if (i == Platform.ACTION_USER_INFOR) {
-//                    PlatformDb platDB = platform.getDb();//获取数平台数据DB
-//                    mUserInfo = platDB.getToken();
-//                }
-//            }
+            final String userInfo = platform.getDb().exportData().toString();
+            //qq登录，先获取unionID
+            if (platform.getName().equals(QQ.NAME)) {
+                Map<String, String> params = new HashMap<>();
+                params.put("access_token", platform.getDb().getToken());
+                params.put("unionid", "1");
+                Network.postNetwork(ConstantsData.QQ_UNION, params, RequestParamsPostion.PARAMS_POSITION_BODY, new RequestCallBack<String>() {
+                    @Override
+                    public void onSuccess(ResponseInfo<String> responseInfo) {
+                        if (!TextUtils.isEmpty(responseInfo.result)) {
+                            String result = (userInfo + responseInfo.result).replace(" ", "").trim();
+                            final String totalResult = result.replace("}callback({", ",").replace(");", "");
 
-            thirdLoginSuccess(platform);
+                            PreferencesUtils.putString(mActivity, "userInfo", totalResult);
+
+                            thirdLoginSuccess(totalResult);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(HttpException error, String msg) {
+
+                    }
+                });
+            } else {
+                PreferencesUtils.putString(mActivity, "userInfo", userInfo);
+                thirdLoginSuccess(userInfo);
+            }
+
+
         }
 
         @Override
@@ -352,55 +423,17 @@ public class LoginActivity extends BaseActivity {
 
     /**
      * 第三方登录成功
-     *
-     * @param platform
-     */
-    private void thirdLoginSuccess(Platform platform) {
-        final String userInfo = platform.getDb().exportData().toString();
-        LogUtils.d("=====onComplete=======" + userInfo);
+     **/
+    private void thirdLoginSuccess(final String userInfo) {
 
-        //qq登录，先获取unionID
-        if (platform.getName().equals(QQ.NAME)) {
-            Map<String, String> params = new HashMap<>();
-            params.put("access_token", platform.getDb().getToken());
-            params.put("unionid", "1");
-            Network.postNetwork(ConstantsData.QQ_UNION, params, RequestParamsPostion.PARAMS_POSITION_BODY, new RequestCallBack<String>() {
-                @Override
-                public void onSuccess(ResponseInfo<String> responseInfo) {
-                    if (!TextUtils.isEmpty(responseInfo.result)) {
-                        String result = (userInfo + responseInfo.result).replace(" ", "").trim();
-                        final String totalResult = result.replace("}callback({", ",").replace(");", "");
-
-                        PreferencesUtils.putString(mActivity, "userInfo", totalResult);
-
-                        LoginActivity.this.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                String js = "javascript:window.app.n_login(" + mLoginType + "," + ConstantsData.DEVICE_TYPE + ",'" + PreferencesUtils.getString(mActivity, "userId", "") + "'," + totalResult + ")";
-                                LogUtils.d("=========js=====" + js);
-                                mWebView.loadUrl(js);
-                            }
-                        });
-                    }
-                }
-
-                @Override
-                public void onFailure(HttpException error, String msg) {
-
-                }
-            });
-        } else {
-            PreferencesUtils.putString(mActivity, "userInfo", platform.getDb().exportData().toString());
-
-            LoginActivity.this.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    String js = "javascript:window.app.n_login(" + mLoginType + "," + ConstantsData.DEVICE_TYPE + "," + PreferencesUtils.getString(mActivity, "userId") + "," + userInfo + ")";
-                    mWebView.loadUrl(js);
-                }
-            });
-        }
-
+        LoginActivity.this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                String js = "javascript:window.app.n_login(" + mLoginType + "," + ConstantsData.DEVICE_TYPE + ",'" + PreferencesUtils.getString(mActivity, "userId", "") + "'," + userInfo + ")";
+                LogUtils.d("================" + js);
+                mWebView.loadUrl(js);
+            }
+        });
     }
 
     @Override
