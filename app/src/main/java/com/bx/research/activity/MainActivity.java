@@ -7,8 +7,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Environment;
@@ -30,18 +28,13 @@ import android.widget.ProgressBar;
 import com.bx.research.MainApplication;
 import com.bx.research.R;
 import com.bx.research.constants.ConstantsData;
-import com.bx.research.entity.AppUpdateInfo;
 import com.bx.research.entity.ShareInfo;
-import com.bx.research.net.CallBack;
-import com.bx.research.net.Network;
-import com.bx.research.net.RequestParamsPostion;
 import com.bx.research.utils.PreferencesUtils;
 import com.bx.research.utils.log.LogUtils;
 import com.bx.research.widget.WinToast;
 import com.google.gson.Gson;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
-import com.lidroid.xutils.view.annotation.event.OnClick;
 import com.master.permissionhelper.PermissionHelper;
 
 import java.io.UnsupportedEncodingException;
@@ -71,11 +64,11 @@ public class MainActivity extends BaseActivity {
 
     private DownloadManager mDownloadManager;
 
-    @OnClick(R.id.btn_test)
-    public void testClick(View view) {
-
-
-    }
+//    @OnClick(R.id.btn_test)
+//    public void testClick(View view) {
+//
+//
+//    }
 
 
     @Override
@@ -105,10 +98,11 @@ public class MainActivity extends BaseActivity {
         }
         mWebView.loadUrl(mUrl);
 
+//        Beta.checkUpgrade();
         //登录之后过来的，需要检查更新
-        if (mType == 1) {
-            checkUpdate();
-        }
+//        if (mType == 1) {
+//            checkUpdate();
+//        }
 
     }
 
@@ -412,71 +406,71 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 检查更新
-     */
-    private void checkUpdate() {
-        Network.postNetwork(ConstantsData.APP_UPDATE, null, RequestParamsPostion.PARAMS_POSITION_BODY, new CallBack<AppUpdateInfo>(AppUpdateInfo.class) {
-            @Override
-            public void doSuccess(final AppUpdateInfo entity) {
-                LogUtils.d("=========AppUpdateInfo============" + entity.toString());
-                int currentVersion = getVersionCode(mActivity);
-                int serverVersion = Integer.parseInt(entity.getVersionCode());
-                if (serverVersion > currentVersion) {
-                    showUpdateDialog(entity);
-                }
-            }
-        });
+//    /**
+//     * 检查更新
+//     */
+//    private void checkUpdate() {
+//        Network.postNetwork(ConstantsData.APP_UPDATE, null, RequestParamsPostion.PARAMS_POSITION_BODY, new CallBack<AppUpdateInfo>(AppUpdateInfo.class) {
+//            @Override
+//            public void doSuccess(final AppUpdateInfo entity) {
+//                LogUtils.d("=========AppUpdateInfo============" + entity.toString());
+//                int currentVersion = getVersionCode(mActivity);
+//                int serverVersion = Integer.parseInt(entity.getVersionCode());
+//                if (serverVersion > currentVersion) {
+//                    showUpdateDialog(entity);
+//                }
+//            }
+//        });
+//
+//    }
 
-    }
+//    /**
+//     * 显示版本更新对话框
+//     *
+//     * @param entity
+//     */
+//    private void showUpdateDialog(final AppUpdateInfo entity) {
+//        if (null != mActivity) {
+//            AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
+//            builder.setTitle("发现新版本");
+//            builder.setMessage(entity.getMessage());
+//            builder.setNegativeButton("稍后再说", new DialogInterface.OnClickListener() {
+//                @Override
+//                public void onClick(DialogInterface dialogInterface, int i) {
+//                    dialogInterface.dismiss();
+//                }
+//            });
+//            builder.setPositiveButton("立即更新", new DialogInterface.OnClickListener() {
+//                @Override
+//                public void onClick(DialogInterface dialogInterface, int i) {
+//                    Intent intent = new Intent();
+//                    intent.setAction("android.intent.action.VIEW");
+//                    Uri content_url = Uri.parse(entity.getUrl());
+//                    intent.setData(content_url);
+//                    startActivity(intent);
+//                }
+//            });
+//            builder.show();
+//        }
+//    }
 
-    /**
-     * 显示版本更新对话框
-     *
-     * @param entity
-     */
-    private void showUpdateDialog(final AppUpdateInfo entity) {
-        if (null != mActivity) {
-            AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
-            builder.setTitle("发现新版本");
-            builder.setMessage(entity.getMessage());
-            builder.setNegativeButton("稍后再说", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    dialogInterface.dismiss();
-                }
-            });
-            builder.setPositiveButton("立即更新", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    Intent intent = new Intent();
-                    intent.setAction("android.intent.action.VIEW");
-                    Uri content_url = Uri.parse(entity.getUrl());
-                    intent.setData(content_url);
-                    startActivity(intent);
-                }
-            });
-            builder.show();
-        }
-    }
-
-    /**
-     * 获取版本号
-     * 获取版本号(内部识别号)
-     *
-     * @param context
-     * @return
-     */
-    public static int getVersionCode(Context context) {
-        try {
-            PackageInfo pi = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
-            return pi.versionCode;
-        } catch (PackageManager.NameNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            return 0;
-        }
-    }
+//    /**
+//     * 获取版本号
+//     * 获取版本号(内部识别号)
+//     *
+//     * @param context
+//     * @return
+//     */
+//    public static int getVersionCode(Context context) {
+//        try {
+//            PackageInfo pi = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+//            return pi.versionCode;
+//        } catch (PackageManager.NameNotFoundException e) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//            return 0;
+//        }
+//    }
 
     /**
      * 显示分享页面

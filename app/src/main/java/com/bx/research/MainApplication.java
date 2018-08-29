@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 
 import com.lidroid.xutils.DbUtils;
+import com.tencent.bugly.Bugly;
 import com.tencent.bugly.crashreport.CrashReport;
 
 import java.util.LinkedList;
@@ -18,7 +19,8 @@ public class MainApplication extends Application {
         super.onCreate();
         mContext = this;
 
-        CrashReport.initCrashReport(getApplicationContext(), "ae88d0bf8b", false);
+//        CrashReport.initCrashReport(getApplicationContext(), "ae88d0bf8b", false);
+        Bugly.init(getApplicationContext(), "ae88d0bf8b", false);
     }
 
     public static MainApplication getInstance() {
