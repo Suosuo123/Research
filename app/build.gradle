@@ -4,7 +4,7 @@ android {
     compileSdkVersion 27
     defaultConfig {
         applicationId "com.bx.research"
-        minSdkVersion 15
+        minSdkVersion 16
         targetSdkVersion 27
         versionCode 201807130
         versionName "1.0"
@@ -44,6 +44,6 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.0'
     implementation 'com.jiechic.library:xUtils:2.6.14'
     implementation 'com.github.bumptech.glide:glide:3.7.0'
-//    implementation 'com.github.LuckSiege.PictureSelector:picture_library:v2.1.0'
-
+//    implementation 'com.tencent.bugly:crashreport:2.6.6.1'
+    implementation 'com.master.android:permissionhelper:1.3'
 }

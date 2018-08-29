@@ -7,6 +7,8 @@ public class ConstantsData {
 
     public static final int DEVICE_TYPE = 1;
 
+    public static final String APK_FILE_NAME = "research_apk";
+
     public static final String SP_FILE_NAME = "research_sp";
 
     public static final String DEFAULT_HOST;
@@ -14,12 +16,12 @@ public class ConstantsData {
     static {
         if (BuildConfig.DEBUG) {
 //            DEFAULT_HOST = "http://192.168.1.104/";// 测试环境
-//            DEFAULT_HOST = "http://www.mmouwang.com";// 正式环境
-            DEFAULT_HOST = "http://zsw.frp.liwenbiao.com";// 正式环境
+//            DEFAULT_HOST = "http://zsw.frp.liwenbiao.com";// 测试环境
+            DEFAULT_HOST = "http://www.mmouwang.com";// 正式环境
         } else {
 //            DEFAULT_HOST = "http://192.168.1.104/";// 测试环境
+//         DEFAULT_HOST = "http://zsw.frp.liwenbiao.com";// 测试环境
             DEFAULT_HOST = "http://www.mmouwang.com";// 正式环境
-//            DEFAULT_HOST = "http://zsw.frp.liwenbiao.com";// 测试环境
         }
     }
 

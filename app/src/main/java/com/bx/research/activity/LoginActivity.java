@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -21,11 +22,8 @@ import android.widget.ProgressBar;
 import com.bumptech.glide.Glide;
 import com.bx.research.R;
 import com.bx.research.constants.ConstantsData;
-import com.bx.research.entity.BaseResult;
 import com.bx.research.entity.SplashResult;
-import com.bx.research.net.CallBack;
 import com.bx.research.net.Network;
-import com.bx.research.net.NetworkUtils;
 import com.bx.research.net.RequestParamsPostion;
 import com.bx.research.utils.PreferencesUtils;
 import com.bx.research.utils.log.LogUtils;
@@ -36,6 +34,7 @@ import com.lidroid.xutils.http.callback.RequestCallBack;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
 
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -60,10 +59,6 @@ public class LoginActivity extends BaseActivity {
     private boolean mIsLogin = false;//是否登录
     private int mLoginType = -1;//登录方式
 
-//    @OnClick(R.id.btn_test)
-//    public void testClick(View view) {
-//
-//    }
 
     @Override
     protected void onCreate() {
@@ -114,6 +109,9 @@ public class LoginActivity extends BaseActivity {
                         iv_splash.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
+                                if (TextUtils.isEmpty(result.getData().getHref())) {
+                                    return;
+                                }
                                 Intent intent = new Intent(mActivity, MainActivity.class);
                                 intent.putExtra("url", result.getData().getHref());
                                 startActivity(intent);
@@ -283,13 +281,22 @@ public class LoginActivity extends BaseActivity {
         //登录成功
         @JavascriptInterface
         public void loginSuccess(String userId) {
-            LogUtils.d("=========loginSuccess=============" + userId);
 
             mStartMainType = 1;
+            LogUtils.d("=========loginSuccess=============" + userId);
 
             PreferencesUtils.putBoolean(mActivity, "isLogin", true);
             PreferencesUtils.putInt(mActivity, "loginType", mLoginType);
-            PreferencesUtils.putString(mActivity, "userId", userId);
+            if (!TextUtils.isEmpty(userId)) {
+                String encodeUserId = null;
+                try {
+                    encodeUserId = new String(Base64.encode(userId.getBytes("utf-8"), Base64.DEFAULT), "utf-8");
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+                LogUtils.d("=========loginSuccess=============" + encodeUserId);
+                PreferencesUtils.putString(mActivity, "userId", encodeUserId);
+            }
 
             LoginActivity.this.runOnUiThread(new Runnable() {
                 @Override
@@ -309,13 +316,13 @@ public class LoginActivity extends BaseActivity {
             LogUtils.d("=========login=============" + type);
 
             mLoginType = Integer.parseInt(type);
-//            if (mLoginType == 1) {
-//                Platform qq = ShareSDK.getPlatform(QQ.NAME);
-//                qq.removeAccount(true);
-//            } else if (mLoginType == 2) {
-//                Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
-//                weChat.removeAccount(true);
-//            }
+            if (mLoginType == 1) {
+                Platform qq = ShareSDK.getPlatform(QQ.NAME);
+                qq.removeAccount(true);
+            } else if (mLoginType == 2) {
+                Platform weChat = ShareSDK.getPlatform(Wechat.NAME);
+                weChat.removeAccount(true);
+            }
 
             shareSDKLogin(mLoginType);
         }
@@ -353,6 +360,7 @@ public class LoginActivity extends BaseActivity {
                 return;
             }
             weChat.setPlatformActionListener(mPlatformActionListener);
+            weChat.SSOSetting(false);
             weChat.showUser(null);//授权并获取用户信息
         }
 //        else {

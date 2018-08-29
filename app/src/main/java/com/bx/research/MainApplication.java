@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 
 import com.lidroid.xutils.DbUtils;
+import com.tencent.bugly.crashreport.CrashReport;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -16,6 +17,8 @@ public class MainApplication extends Application {
     public void onCreate() {
         super.onCreate();
         mContext = this;
+
+        CrashReport.initCrashReport(getApplicationContext(), "ae88d0bf8b", false);
     }
 
     public static MainApplication getInstance() {

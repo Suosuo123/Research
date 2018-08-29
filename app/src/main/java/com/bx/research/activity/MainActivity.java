@@ -2,6 +2,7 @@ package com.bx.research.activity;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -10,14 +11,15 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Environment;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.view.View;
+import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
+import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -39,6 +41,8 @@ import com.bx.research.widget.WinToast;
 import com.google.gson.Gson;
 import com.lidroid.xutils.view.annotation.ContentView;
 import com.lidroid.xutils.view.annotation.ViewInject;
+import com.lidroid.xutils.view.annotation.event.OnClick;
+import com.master.permissionhelper.PermissionHelper;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -46,7 +50,6 @@ import java.net.URLDecoder;
 import cn.sharesdk.framework.Platform;
 import cn.sharesdk.framework.ShareSDK;
 import cn.sharesdk.onekeyshare.OnekeyShare;
-import cn.sharesdk.sina.weibo.SinaWeibo;
 import cn.sharesdk.tencent.qq.QQ;
 import cn.sharesdk.wechat.friends.Wechat;
 
@@ -64,18 +67,26 @@ public class MainActivity extends BaseActivity {
 
     private ClipboardManager mClipboardManager;
 
-//    @OnClick(R.id.btn_test)
-//    public void testClick(View view) {
-//        String info = "{'title': '测试问卷','text': '内容文本','imageUrl': 'http://pic.qqtn.com/up/2016-7/2016072614451378952.jpg','url': 'http://2016.diaoyan360.com/InversTask/TaskDetail?taskId=12&uid=30BB99FA78FF9423'}";
-//        showShare(info);
-//    }
+    private PermissionHelper permissionHelper;
+
+    private DownloadManager mDownloadManager;
+
+    @OnClick(R.id.btn_test)
+    public void testClick(View view) {
+
+
+    }
 
 
     @Override
     protected void onCreate() {
         super.onCreate();
 
+        permissionHelper = new PermissionHelper(mActivity, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 100);
+
         mClipboardManager = (ClipboardManager) mActivity.getSystemService(Context.CLIPBOARD_SERVICE);
+
+        mDownloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
 
         mType = getIntent().getIntExtra("type", -1);
         mUrl = getIntent().getStringExtra("url");
@@ -106,17 +117,13 @@ public class MainActivity extends BaseActivity {
         super.initData();
     }
 
-    public void onRequestPermissionsResult(int requestCode,String[] permissons,int[] grantResult){
-        switch(requestCode){
-            case 10:if(grantResult.length>0 && grantResult[0]==PackageManager.PERMISSION_GRANTED){
-                onenFileChooseImpleForAndroid();
-            }else{
-                WinToast.toast(mActivity,"permission denied");
-            }break;
-            default:;
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (permissionHelper != null) {
+            permissionHelper.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
     }
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
@@ -151,7 +158,6 @@ public class MainActivity extends BaseActivity {
     public ValueCallback<Uri> mUploadMessage;
     public final static int FILE_CHOOSER_RESULT_CODE_FOR_ANDROID_5 = 2;
     private final static int FILE_CHOOSER_RESULT_CODE = 1;// 表单的结果回调
-    private Uri imageUri;
 
     /**
      * 配置webView基本参数
@@ -229,11 +235,28 @@ public class MainActivity extends BaseActivity {
                                              WebChromeClient.FileChooserParams fileChooserParams) {
                 mUploadMessageForAndroid5 = uploadMsg;
 
-                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 10);
-                } else {
-                    onenFileChooseImpleForAndroid();
-                }
+                permissionHelper.request(new PermissionHelper.PermissionCallback() {
+                    @Override
+                    public void onPermissionGranted() {
+                        onenFileChooseImpleForAndroid();
+                    }
+
+                    @Override
+                    public void onIndividualPermissionGranted(String[] grantedPermission) {
+                        LogUtils.d("onIndividualPermissionGranted() called with: grantedPermission = [" + TextUtils.join(",", grantedPermission) + "]");
+                    }
+
+                    @Override
+                    public void onPermissionDenied() {
+                        LogUtils.d("onPermissionDenied() called");
+                    }
+
+                    @Override
+                    public void onPermissionDeniedBySystem() {
+                        LogUtils.d("onPermissionDeniedBySystem() called");
+
+                    }
+                });
 
                 return true;
             }
@@ -264,6 +287,35 @@ public class MainActivity extends BaseActivity {
             }
         });
 
+        mWebView.setDownloadListener(new DownloadListener() {
+            @Override
+            public void onDownloadStart(final String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+                if (TextUtils.isEmpty(url))
+                    return;
+                permissionHelper.request(new PermissionHelper.PermissionCallback() {
+                    @Override
+                    public void onPermissionGranted() {
+                        downloadBySystem(url, "apk");
+                    }
+
+                    @Override
+                    public void onIndividualPermissionGranted(String[] grantedPermission) {
+                        LogUtils.d("onIndividualPermissionGranted() called with: grantedPermission = [" + TextUtils.join(",", grantedPermission) + "]");
+                    }
+
+                    @Override
+                    public void onPermissionDenied() {
+                        LogUtils.d("onPermissionDenied() called");
+                    }
+
+                    @Override
+                    public void onPermissionDeniedBySystem() {
+                        LogUtils.d("onPermissionDeniedBySystem() called");
+
+                    }
+                });
+            }
+        });
 
     }
 
@@ -343,13 +395,11 @@ public class MainActivity extends BaseActivity {
         public void logout() {
             LogUtils.d("=========logout=============");
             int loginType = PreferencesUtils.getInt(mActivity, "loginType", -1);
-            Platform platform;
+            Platform platform = null;
             if (loginType == 1) {
                 platform = ShareSDK.getPlatform(QQ.NAME);
             } else if (loginType == 2) {
                 platform = ShareSDK.getPlatform(Wechat.NAME);
-            } else {
-                platform = ShareSDK.getPlatform(SinaWeibo.NAME);
             }
             if (null != platform) {
                 platform.removeAccount(true);
@@ -469,6 +519,41 @@ public class MainActivity extends BaseActivity {
 
         // 启动分享GUI
         oks.show(this);
+    }
+
+    /**
+     * 下载文件
+     *
+     * @param url
+     * @param mimeType
+     */
+    private void downloadBySystem(String url, String mimeType) {
+        // 指定下载地址
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+        // 允许媒体扫描，根据下载的文件类型被加入相册、音乐等媒体库
+        request.allowScanningByMediaScanner();
+        // 设置通知的显示类型，下载进行时和完成后显示通知
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE);
+        // 设置通知栏的标题，如果不设置，默认使用文件名
+//        request.setTitle("This is title");
+        // 设置通知栏的描述
+//        request.setDescription("This is description");
+        // 允许在计费流量下下载
+        request.setAllowedOverMetered(true);
+        // 允许该记录在下载管理界面可见
+        request.setVisibleInDownloadsUi(true);
+        // 允许漫游时下载
+        request.setAllowedOverRoaming(true);
+        // 允许下载的网路类型
+        request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI);
+        // 设置下载文件保存的路径和文件名
+        String fileName = URLUtil.guessFileName(url, ConstantsData.APK_FILE_NAME, mimeType);
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+//        另外可选一下方法，自定义下载路径
+//        request.setDestinationUri()
+//        request.setDestinationInExternalFilesDir()
+        // 添加一个下载任务
+        long downloadId = mDownloadManager.enqueue(request);
     }
 
     @Override
